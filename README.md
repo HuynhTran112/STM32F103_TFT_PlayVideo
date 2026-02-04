@@ -1,20 +1,19 @@
 # STM32F103 TFT Video Player (SD Card + ST7735)
 
 ## Description
-This project is a simple video player for **STM32F103C8T6** (Blue Pill) that reads raw RGB565 video data from an **SD Card** and streams it to an **ST7735 TFT LCD** at 160x128 resolution. The system uses bare-metal register-level programming (no HAL) for maximum performance and minimal code size.
+This project is a simple video player for **STM32F103C8T6** (Blue Pill) that reads raw RGB565 video data from an **SD Card** and display it to an **ST7735 TFT LCD** at 160x128 resolution.
 
 ## Requirements
 *   **IDE**: [Keil MDK-ARM v5](https://www.keil.com/demo/eval/arm.htm)
 *   **Programmer**: ST-Link V2
 *   **Software Tools**:
-    *   [FFmpeg](https://ffmpeg.org/download.html) – Video conversion
+    *   [FFmpeg](https://ffmpeg.org/download.html) – Convert video to RGB
     *   [Win32 Disk Imager](https://sourceforge.net/projects/win32diskimager/) – Write video to SD Card
 *   **Hardware Components**:
     *   STM32F103C8T6 (Blue Pill)
     *   ST7735 TFT LCD (1.8" 160x128, SPI)
     *   MicroSD Card Module (SPI)
     *   SD Card
-
 
 ## Project Structure
 ```text
@@ -93,77 +92,74 @@ This project is a simple video player for **STM32F103C8T6** (Blue Pill) that rea
 8.  Flash the firmware: **Flash → Download** (or press `F8`).
 
 ## How It Works
-### ST7735 LCD Driver (SPI1)
-The ST7735 is a 262K color TFT LCD controller. The MCU sends commands and pixel data via SPI.
+### ST7735 TFT LCD
+**Concept**: The ST7735 receives commands and pixel data via SPI. To display an image, you set a drawing window then stream RGB565 pixel data.
 
-**SPI Configuration**:
-*   Mode: Master, CPOL=0, CPHA=0 (SPI Mode 0).
-*   Speed: 9 MHz (72 MHz / 8).
-*   Data: 8-bit, MSB first.
+**Important Notes**:
+*   **SPI Speed**: Max 15 MHz for write. This project uses 9 MHz (72 MHz ÷ 8) for stability.
+*   **Pixel Format**: RGB565 (16-bit) — each pixel = 2 bytes. One frame (160×128) = 40,960 bytes.
+*   **DC Pin**: Low = command, High = data. Must toggle correctly or display won't work.
+*   **Reset**: Hardware reset (RST low >10ms) required before sending commands.
 
-**RGB565 Data Format**:  
-Each pixel uses 16 bits (2 bytes) to represent color:
+**Display Flow**:
+1.  **Initialize**: Reset → Sleep out → Set color format (16-bit) → Set orientation → Display ON.
+2.  **Set Window**: `CASET` (column 0–159) + `RASET` (row 0–127) defines drawing area.
+3.  **Send Data**: After `RAMWR`, stream all pixels continuously without pausing.
+4.  **End**: Pull CS high after all data sent.
+
+**Troubleshooting**:
+*   White screen → RST timing wrong (wait >120ms after reset).
+*   Wrong colors → Check RGB/BGR order in `MADCTL` command.
+*   Partial display → `CASET`/`RASET` offset may be wrong for your LCD model.
+
+### SD Card (SPI Mode)
+**Concept**: SD Card supports SPI mode. Data is stored in 512-byte sectors. Video is written as raw data from sector 0.
+
+**Important Notes**:
+*   **Init Speed**: Must use ≤400 kHz. This project uses 140 kHz (36 MHz ÷ 256).
+*   **Fast Speed**: After init, switch to 9 MHz (36 MHz ÷ 4) for video streaming.
+*   **Card Types**: SDHC uses sector address directly. SDv1/v2 need sector × 512.
+*   **Sector Size**: Always 512 bytes. One frame = 80 sectors.
+
+**Initialization Flow**:
+1.  Send 74+ clocks with CS high (wake up card).
+2.  `CMD0` → expect `0x01` (idle state).
+3.  `CMD8` with `0x1AA` → if `0x01`, it's SDv2/SDHC.
+4.  `ACMD41` repeatedly → wait until `0x00` (ready).
+5.  `CMD58` → check bit 30 for SDHC.
+6.  Switch SPI to fast speed.
+
+**Reading Flow**:
+1.  `CMD17` + sector number → response `0x00`.
+2.  Wait for token `0xFE`.
+3.  Read 512 bytes.
+4.  Read 2 CRC bytes (ignored).
+
+**Troubleshooting**:
+*   Init fails → Check wiring, use slower speed, ensure 3.3V.
+*   Read timeout → Card not init properly, or sector address wrong.
+*   Garbage data → SDHC uses sector number, SDv1/v2 uses byte address.
+
+### Video Playback Logic
+**Data Flow**:
 ```
-Bit:   15 14 13 12 11 | 10 9 8 7 6 5 | 4 3 2 1 0
-Color:  R  R  R  R  R |  G G G G G G | B B B B B
+SD Card (sector 0, 1, 2...) → 512-byte buffer → SPI1 → LCD → Display
 ```
-*   Red: 5 bits (0–31)
-*   Green: 6 bits (0–63)
-*   Blue: 5 bits (0–31)
 
-**Command Sequence**:
-| Step | Command | Description |
-| :--- | :--- | :--- |
-| 1 | `SWRESET` (0x01) | Software reset |
-| 2 | `SLPOUT` (0x11) | Exit sleep mode |
-| 3 | `COLMOD` (0x3A) | Set 16-bit color mode |
-| 4 | `MADCTL` (0x36) | Set display orientation |
-| 5 | `DISPON` (0x29) | Turn on display |
-| 6 | `CASET` (0x2A) | Set column address |
-| 7 | `RASET` (0x2B) | Set row address |
-| 8 | `RAMWR` (0x2C) | Write pixel data |
-
-### SD Card Driver (SPI2)
-The SD Card operates in SPI Mode for simple communication with microcontrollers.
-
-**SPI Configuration**:
-*   Mode: Master, CPOL=0, CPHA=0 (SPI Mode 0).
-*   Init Speed: 140 kHz (for compatibility).
-*   Fast Speed: 9 MHz (36 MHz / 4).
-
-**Command Frame (6 bytes)**:
-```
-| Byte 0      | Byte 1-4       | Byte 5   |
-|-------------|----------------|----------|
-| 0x40 + CMD  | 32-bit Argument| CRC + 1  |
-```
-*   Byte 0: Command index (e.g., 0x40 + 17 = 0x51 for CMD17).
-*   Byte 1–4: 32-bit argument (e.g., sector address).
-*   Byte 5: CRC7 checksum + stop bit.
-
-**Data Read Sequence**:
-1.  Send `CMD17` (Read Single Block) with sector address.
-2.  Wait for response `0x00` (command accepted).
-3.  Wait for data token `0xFE`.
-4.  Read 512 bytes of data.
-5.  Read 2 bytes CRC (ignored in SPI mode).
-
-**Card Types**:
-| Type | Addressing | Capacity |
-| :--- | :--- | :--- |
-| SDv1 | Byte address | ≤2 GB |
-| SDv2 | Byte address | ≤2 GB |
-| SDHC | Sector address | 2–32 GB |
+**Performance**:
+*   1 frame = 80 sectors = 40,960 bytes.
+*   At 9 MHz, read 512 bytes ≈ 0.5 ms → 1 frame ≈ 40 ms → ~25 FPS max.
+*   Actual FPS depends on SPI overhead and LCD write speed.
 
 ## System Workflow
-1.  **Startup**: System clock is configured to 72 MHz using HSE and PLL.
-2.  **Initialization**: LCD and SD Card are initialized via SPI.
-3.  **Playback Loop**:
-    *   Set LCD to fullscreen mode (160x128 window).
-    *   Read 80 sectors (40 KB) per frame from SD Card.
-    *   Stream pixel data to LCD via SPI DMA-like transfer.
-    *   Loop back to frame 0 when video ends.
-4.  **Error Handling**: If SD Card fails, LCD turns red and halts.
+1.  **Startup**: System clock configured to 72 MHz (HSE + PLL).
+2.  **Init**: LCD and SD Card initialized via SPI.
+3.  **Playback**:
+    *   Set LCD fullscreen window (160×128).
+    *   Read 80 sectors per frame from SD.
+    *   Stream to LCD.
+    *   Loop when video ends.
+4.  **Error**: If SD fails, LCD fills red and halts.
 
 ## Preview
 <p align="center">
@@ -176,8 +172,6 @@ The SD Card operates in SPI Mode for simple communication with microcontrollers.
 ## Result Summary
 *   Video playback runs smoothly at approximately 20 FPS.
 *   SD Card and LCD communicate stably via SPI without data loss.
-*   The system uses only 512 bytes of RAM for buffering, leaving plenty of memory for other tasks.
-*   All code is written at the register level without external libraries, making it easy to understand and modify.
 
 ## Author
 **Trần Huỳnh**  
