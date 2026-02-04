@@ -1,0 +1,27 @@
+# Build folders
+build/
+Debug/
+Release/
+# Object & firmware files
+*.o
+*.d
+*.elf
+*.hex
+*.bin
+*.map
+# IDE files 
+.vscode/
+.settings/
+.cproject
+.project
+# Keil MDK-ARM
+Listings/
+Objects/
+*.uvguix.*
+*.uvoptx
+*.bak
+*.dep
+*.htm
+# OS junk
+.DS_Store
+Thumbs.db
