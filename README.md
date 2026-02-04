@@ -60,10 +60,10 @@ This project is a simple video player for **STM32F103C8T6** (Blue Pill) that rea
     ```
 2.  Rename the output file from `video.rgb` to `video.img`.
 3.  Use **Win32 Disk Imager** to write the `.img` file to the SD Card:
-* Open Win32 Disk Imager.
-*   Select the `video.img` file.
-*   Choose the correct SD Card drive letter.
-*   Click **Write**.
+   * Open Win32 Disk Imager.
+   * Select the `video.img` file.
+   * Choose the correct SD Card drive letter.
+   * Click **Write**.
 
 4.  Calculate `TOTAL_FRAMES` using PowerShell:
     ```powershell
