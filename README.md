@@ -6,18 +6,15 @@ This project is a simple video player for **STM32F103C8T6** (Blue Pill) that rea
 ## Requirements
 *   **IDE**: Keil MDK-ARM v5
 *   **Programmer**: ST-Link V2
+*   **Software Tools**:
+    *   [FFmpeg](https://ffmpeg.org/download.html) – Video conversion
+    *   [Win32 Disk Imager](https://sourceforge.net/projects/win32diskimager/) – Write video to SD Card
 *   **Hardware Components**:
     *   STM32F103C8T6 (Blue Pill)
     *   ST7735 TFT LCD (1.8" 160x128, SPI)
     *   MicroSD Card Module (SPI)
-    *   SD Card (FAT32 formatted, raw video data)
+    *   SD Card
 
-## Features
-*   Raw RGB565 video playback at 160x128 resolution
-*   Automatic video looping
-*   High-speed SPI communication (18 MHz for LCD, 9 MHz for SD)
-*   Bare-metal register-level code (no HAL library)
-*   Low memory footprint (512-byte sector buffer)
 
 ## Project Structure
 ```text
@@ -67,6 +64,7 @@ This project is a simple video player for **STM32F103C8T6** (Blue Pill) that rea
     *   Select the `video.img` file.
     *   Choose the correct SD Card drive letter.
     *   Click **Write**.
+
 4.  Calculate `TOTAL_FRAMES` using PowerShell:
     ```powershell
     (Get-Item video.img).Length / 40960
@@ -113,10 +111,10 @@ This project is a simple video player for **STM32F103C8T6** (Blue Pill) that rea
 [![Watch the video](img/thumbnail.jpg)](https://www.youtube.com/watch?v=YOUR_VIDEO_ID)
 
 ## Result Summary
-*   Smooth video playback at ~20 FPS.
-*   Stable SPI communication with SD Card and LCD.
-*   Low memory usage (only 512-byte buffer).
-*   No external libraries required.
+*   Video playback runs smoothly at approximately 20 FPS.
+*   SD Card and LCD communicate stably via SPI without data loss.
+*   The system uses only 512 bytes of RAM for buffering, leaving plenty of memory for other tasks.
+*   All code is written at the register level without external libraries, making it easy to understand and modify.
 
 ## Author
 **Trần Huỳnh**  
