@@ -60,10 +60,10 @@ This project is a simple video player for **STM32F103C8T6** (Blue Pill) that rea
     ```
 2.  Rename the output file from `video.rgb` to `video.img`.
 3.  Use **Win32 Disk Imager** to write the `.img` file to the SD Card:
-   * Open Win32 Disk Imager.
-   * Select the `video.img` file.
-   * Choose the correct SD Card drive letter.
-   * Click **Write**.
+    *   Open Win32 Disk Imager.
+    *   Select the `video.img` file.
+    *   Choose the correct SD Card drive letter.
+    *   Click **Write**.
 
 4.  Calculate `TOTAL_FRAMES` using PowerShell:
     ```powershell
@@ -91,6 +91,69 @@ This project is a simple video player for **STM32F103C8T6** (Blue Pill) that rea
 6.  Build the project: **Project → Build Target** (or press `F7`).
 7.  Connect **ST-Link V2** to the Blue Pill.
 8.  Flash the firmware: **Flash → Download** (or press `F8`).
+
+## How It Works
+### ST7735 LCD Driver (SPI1)
+The ST7735 is a 262K color TFT LCD controller. The MCU sends commands and pixel data via SPI.
+
+**SPI Configuration**:
+*   Mode: Master, CPOL=0, CPHA=0 (SPI Mode 0).
+*   Speed: 9 MHz (72 MHz / 8).
+*   Data: 8-bit, MSB first.
+
+**RGB565 Data Format**:  
+Each pixel uses 16 bits (2 bytes) to represent color:
+```
+Bit:   15 14 13 12 11 | 10 9 8 7 6 5 | 4 3 2 1 0
+Color:  R  R  R  R  R |  G G G G G G | B B B B B
+```
+*   Red: 5 bits (0–31)
+*   Green: 6 bits (0–63)
+*   Blue: 5 bits (0–31)
+
+**Command Sequence**:
+| Step | Command | Description |
+| :--- | :--- | :--- |
+| 1 | `SWRESET` (0x01) | Software reset |
+| 2 | `SLPOUT` (0x11) | Exit sleep mode |
+| 3 | `COLMOD` (0x3A) | Set 16-bit color mode |
+| 4 | `MADCTL` (0x36) | Set display orientation |
+| 5 | `DISPON` (0x29) | Turn on display |
+| 6 | `CASET` (0x2A) | Set column address |
+| 7 | `RASET` (0x2B) | Set row address |
+| 8 | `RAMWR` (0x2C) | Write pixel data |
+
+### SD Card Driver (SPI2)
+The SD Card operates in SPI Mode for simple communication with microcontrollers.
+
+**SPI Configuration**:
+*   Mode: Master, CPOL=0, CPHA=0 (SPI Mode 0).
+*   Init Speed: 140 kHz (for compatibility).
+*   Fast Speed: 9 MHz (36 MHz / 4).
+
+**Command Frame (6 bytes)**:
+```
+| Byte 0      | Byte 1-4       | Byte 5   |
+|-------------|----------------|----------|
+| 0x40 + CMD  | 32-bit Argument| CRC + 1  |
+```
+*   Byte 0: Command index (e.g., 0x40 + 17 = 0x51 for CMD17).
+*   Byte 1–4: 32-bit argument (e.g., sector address).
+*   Byte 5: CRC7 checksum + stop bit.
+
+**Data Read Sequence**:
+1.  Send `CMD17` (Read Single Block) with sector address.
+2.  Wait for response `0x00` (command accepted).
+3.  Wait for data token `0xFE`.
+4.  Read 512 bytes of data.
+5.  Read 2 bytes CRC (ignored in SPI mode).
+
+**Card Types**:
+| Type | Addressing | Capacity |
+| :--- | :--- | :--- |
+| SDv1 | Byte address | ≤2 GB |
+| SDv2 | Byte address | ≤2 GB |
+| SDHC | Sector address | 2–32 GB |
 
 ## System Workflow
 1.  **Startup**: System clock is configured to 72 MHz using HSE and PLL.
