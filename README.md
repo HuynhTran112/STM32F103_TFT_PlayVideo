@@ -21,13 +21,15 @@ This project is a simple video player for **STM32F103C8T6** (Blue Pill) that rea
 
 ## Project Structure
 ```text
-├── STM32_PlayVideo.uvprojx   # Keil project file
-├── main.c                    # System init & video playback loop
-├── SysClockConfig.c/.h       # System clock configuration (72 MHz)
-├── delay.c/.h                # SysTick delay functions
-├── GLCD_ST7735.c/.h          # ST7735 TFT LCD driver (SPI1)
-├── sd_card.c/.h              # SD Card driver (SPI2)
-└── README.md
+├── main.c             # System init & video playback loop
+├── SysClockConfig.c   # System clock configuration (72 MHz)
+├── SysClockConfig.h
+├── delay.c            # SysTick delay functions
+├── delay.h
+├── GLCD_ST7735.c      # ST7735 TFT LCD driver (SPI1)
+├── GLCD_ST7735.h
+├── sd_card.c          # SD Card driver (SPI2)
+└── sd_card.h
 ```
 
 ## Hardware Connections
@@ -59,24 +61,36 @@ This project is a simple video player for **STM32F103C8T6** (Blue Pill) that rea
     ```bash
     ffmpeg -i input.mp4 -vf "scale=160:128,fps=20" -pix_fmt rgb565be -f rawvideo video.rgb
     ```
-2.  Write the raw video file directly to the SD card using a tool like **Win32 Disk Imager** or **dd** (Linux):
-    ```bash
-    # Windows (use Win32 Disk Imager)
-    # Linux
-    sudo dd if=video.rgb of=/dev/sdX bs=512
-    ```
+2.  Rename the output file from `video.rgb` to `video.img`.
+3.  Use **Win32 Disk Imager** to write the `.img` file to the SD Card:
+    *   Open Win32 Disk Imager.
+    *   Select the `video.img` file.
+    *   Choose the correct SD Card drive letter.
+    *   Click **Write**.
     > ⚠️ **Warning**: This will overwrite the SD card. Make sure to select the correct drive!
 
-3.  Update `TOTAL_FRAMES` in `main.c`:
+4.  Update `TOTAL_FRAMES` in `main.c`:
     ```c
     #define TOTAL_FRAMES  341   /* (File size in bytes) / (160 * 128 * 2) */
     ```
 
 ### 2. Build and Flash
-1.  Open `STM32_PlayVideo.uvprojx` in Keil MDK-ARM.
-2.  Build the project: **Project → Build Target** (or press `F7`).
-3.  Connect ST-Link V2 to the Blue Pill.
-4.  Flash the firmware: **Flash → Download** (or press `F8`).
+1.  Download or clone this repository.
+2.  Open **Keil MDK-ARM** and create a new project:
+    *   **Project → New µVision Project**
+    *   Select device: `STM32F103C8`
+3.  Add source files to the project:
+    *   Right-click **Source Group 1 → Add Existing Files**
+    *   Add all `.c` files: `main.c`, `SysClockConfig.c`, `delay.c`, `GLCD_ST7735.c`, `sd_card.c`
+4.  Configure Include Paths:
+    *   **Options for Target → C/C++ → Include Paths**
+    *   Add the project folder path (where `.h` files are located)
+5.  Configure Debugger:
+    *   **Options for Target → Debug**
+    *   Select **ST-Link Debugger**
+6.  Build the project: **Project → Build Target** (or press `F7`).
+7.  Connect **ST-Link V2** to the Blue Pill.
+8.  Flash the firmware: **Flash → Download** (or press `F8`).
 
 ## System Workflow
 1.  **Startup**: System clock is configured to 72 MHz using HSE and PLL.
