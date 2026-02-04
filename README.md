@@ -1,20 +1,19 @@
 # STM32F103 TFT Video Player (SD Card + ST7735)
 
 ## Description
-This project is a simple video player for **STM32F103C8T6** (Blue Pill) that reads raw RGB565 video data from an **SD Card** and streams it to an **ST7735 TFT LCD** at 160x128 resolution. The system uses bare-metal register-level programming (no HAL) for maximum performance and minimal code size.
+This project is a simple video player for **STM32F103C8T6** (Blue Pill) that reads raw RGB565 video data from an **SD Card** and display it to an **ST7735 TFT LCD** at 160x128 resolution.
 
 ## Requirements
 *   **IDE**: Keil MDK-ARM v5
 *   **Programmer**: ST-Link V2
 *   **Software Tools**:
-    *   [FFmpeg](https://ffmpeg.org/download.html) – Video conversion
+    *   [FFmpeg](https://ffmpeg.org/download.html) – Convert video to RGB
     *   [Win32 Disk Imager](https://sourceforge.net/projects/win32diskimager/) – Write video to SD Card
 *   **Hardware Components**:
     *   STM32F103C8T6 (Blue Pill)
     *   ST7735 TFT LCD (1.8" 160x128, SPI)
     *   MicroSD Card Module (SPI)
     *   SD Card
-
 
 ## Project Structure
 ```text
