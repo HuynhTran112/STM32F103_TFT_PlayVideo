@@ -67,8 +67,6 @@ This project is a simple video player for **STM32F103C8T6** (Blue Pill) that rea
     *   Select the `video.img` file.
     *   Choose the correct SD Card drive letter.
     *   Click **Write**.
-    > ⚠️ **Warning**: This will overwrite the SD card. Make sure to select the correct drive!
-
 4.  Calculate `TOTAL_FRAMES` using PowerShell:
     ```powershell
     (Get-Item video.img).Length / 40960
