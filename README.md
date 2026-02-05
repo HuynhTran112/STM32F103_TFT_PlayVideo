@@ -15,11 +15,10 @@ This project is a simple video player for **STM32F103C8T6** (Blue Pill) that rea
     *   MicroSD Card Module (SPI)
     *   SD Card
 
-
 ## Project Structure
 ```text
 ├── main.c             # System init & video playback loop
-├── SysClockConfig.c   # System clock configuration (72 MHz)
+├── SysClockConfig.c   # System clock configuration
 ├── SysClockConfig.h
 ├── delay.c            # SysTick delay functions
 ├── delay.h
